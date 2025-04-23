@@ -1,0 +1,46 @@
+import SimpleITK as sitk
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage import filters
+
+# --- Helper functions ---
+def show_2d_image_with_segmentation(image, mask, title="Segmentation"):
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(image, cmap='gray')
+    plt.title("Original Image")
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(image, cmap='gray')
+    plt.imshow(mask, cmap='jet', alpha=0.5)
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
+# --- 2D Segmentation ---
+def segment_2d_image(image_path):
+    image = sitk.ReadImage(image_path)
+    image_array = sitk.GetArrayFromImage(image)[0]  # For 2D image
+    threshold = filters.threshold_otsu(image_array)
+    segmentation = image_array > threshold
+    show_2d_image_with_segmentation(image_array, segmentation, "2D Segmentation")
+    return segmentation
+
+# --- 3D Segmentation ---
+def segment_3d_image(volume_path, slice_index=50):
+    volume = sitk.ReadImage(volume_path)
+    volume_array = sitk.GetArrayFromImage(volume)
+    slice_image = volume_array[slice_index]
+   
+    threshold = filters.threshold_otsu(slice_image)
+    segmentation = slice_image > threshold
+   
+    show_2d_image_with_segmentation(slice_image, segmentation, f"3D Slice {slice_index} Segmentation")
+    return segmentation
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    # Replace with your image paths
+    path
+
