@@ -1,46 +1,74 @@
 import SimpleITK as sitk
 import numpy as np
 import matplotlib.pyplot as plt
-from skimage import filters
+from skimage.filters import threshold_otsu
+import os
 
-# --- Helper functions ---
-def show_2d_image_with_segmentation(image, mask, title="Segmentation"):
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.imshow(image, cmap='gray')
-    plt.title("Original Image")
-    plt.axis('off')
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(image, cmap='gray')
-    plt.imshow(mask, cmap='jet', alpha=0.5)
-    plt.title(title)
-    plt.axis('off')
+def load_image(path):
+    """Load image using SimpleITK."""
+    image = sitk.ReadImage(path)
+    array = sitk.GetArrayFromImage(image)  # z, y, x
+    return array, image
+
+
+def segment_2d(image_2d):
+    """Perform simple Otsu thresholding for 2D segmentation."""
+    threshold = threshold_otsu(image_2d)
+    segmented = image_2d > threshold
+    return segmented
+
+
+def segment_3d(volume_3d):
+    """Apply 2D segmentation slice by slice on a 3D volume."""
+    segmented_volume = np.zeros_like(volume_3d)
+    for i in range(volume_3d.shape[0]):
+        segmented_volume[i] = segment_2d(volume_3d[i])
+    return segmented_volume
+
+
+def save_segmented_image(segmented_array, reference_image, output_path):
+    """Save the segmented binary image using the reference image's metadata."""
+    seg_image = sitk.GetImageFromArray(segmented_array.astype(np.uint8))
+    seg_image.CopyInformation(reference_image)
+    sitk.WriteImage(seg_image, output_path)
+    print(f"Segmented image saved to: {output_path}")
+
+
+def visualize_2d_segmentation(original, segmented):
+    """Display original and segmented 2D image."""
+    fig, axes = plt.subplots(1, 2)
+    axes[0].imshow(original, cmap='gray')
+    axes[0].set_title("Original 2D Slice")
+    axes[1].imshow(segmented, cmap='gray')
+    axes[1].set_title("Segmented Slice")
     plt.show()
 
-# --- 2D Segmentation ---
-def segment_2d_image(image_path):
-    image = sitk.ReadImage(image_path)
-    image_array = sitk.GetArrayFromImage(image)[0]  # For 2D image
-    threshold = filters.threshold_otsu(image_array)
-    segmentation = image_array > threshold
-    show_2d_image_with_segmentation(image_array, segmentation, "2D Segmentation")
-    return segmentation
 
-# --- 3D Segmentation ---
-def segment_3d_image(volume_path, slice_index=50):
-    volume = sitk.ReadImage(volume_path)
-    volume_array = sitk.GetArrayFromImage(volume)
-    slice_image = volume_array[slice_index]
-   
-    threshold = filters.threshold_otsu(slice_image)
-    segmentation = slice_image > threshold
-   
-    show_2d_image_with_segmentation(slice_image, segmentation, f"3D Slice {slice_index} Segmentation")
-    return segmentation
+def main():
+    # Update this path to your DICOM/NIfTI image path
+    image_path = "sample_image.nii.gz"  # Replace with your 2D/3D medical image path
+    output_path = "segmented_output.nii.gz"
 
-# --- Example Usage ---
+    image_array, reference_image = load_image(image_path)
+
+    if image_array.ndim == 2:
+        print("Processing 2D image...")
+        segmented = segment_2d(image_array)
+        visualize_2d_segmentation(image_array, segmented)
+        save_segmented_image(segmented, reference_image, output_path)
+
+    elif image_array.ndim == 3:
+        print("Processing 3D volume...")
+        segmented = segment_3d(image_array)
+        # Visualize a mid-slice
+        mid_slice = image_array.shape[0] // 2
+        visualize_2d_segmentation(image_array[mid_slice], segmented[mid_slice])
+        save_segmented_image(segmented, reference_image, output_path)
+
+    else:
+        print("Unsupported image dimensions.")
+
+
 if __name__ == "__main__":
-    # Replace with your image paths
-    path
-
+    main()
